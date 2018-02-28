@@ -7,9 +7,9 @@
 %  arbitrary input sound file, being the excitation signal of a moving    %
 %  point source on an arbitrary trajectory                                %
 %  Outputs:                                                               %
-%    d_wfs: i.-th column contains the i.-th loudspeaker's driving signal  %
-%    if output = 'wav' is set: out.wav is created                         %
-%                                                                         %
+%   d_wfs: i.-th column contains the i.-th loudspeaker's driving signal   %
+%   output = 'wav' is set: i channel out.wav is created                   %
+%   output = 'SSR' is set: i number of wave and an asdf file are generated%
 % (c) 2018 by Gergely Firtha                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear
@@ -18,12 +18,15 @@ addpath('Files')
 c = 343.1;
 %% User defined parameters
 % Virtual source properties
-v = 20;                                       % Virtual source velocity [m/s]
+v = 15;                                       % Virtual source velocity [m/s]
 [in,fs] = audioread('Samples/fire.mp3');      % Source excitation signal
+output = 'SSR';                               % wav / SSR
+% if wav: saves output signals as a multichannel wav file
+% if SSR: saves i number of wav files and generates an asdf file for the SSR
 
 % Anchor points for source trajectory
 x_a = [  -3   -3  -3  -2.5   -1.5    0  100;  %x_coordinates [m]
-        -100  -1   0   1.5    2.5    3   3 ]; %y_coordinates [m]
+    -100  -1   0   1.5    2.5    3   3 ]; %y_coordinates [m]
 
 % SSD properties
 N_ssd =   50;                                 % Number of loudspeakers
@@ -32,7 +35,6 @@ Rref  =   0.1;                                % Radius of reference circle
 AA_filter = 'on';                             % Antialiasing filtering enabled (on/off)
 AA_type   = 'freq_domain';                    % AA filter type: freq_domain/time_domain
 
-output = 'wav';                               % saving output signals as a multichannel wav file
 subsamp = 200;                                % subsampling parameter of source trajectory
 %% Create circular SSD
 fi = (0:2*pi/N_ssd:2*pi-2*pi/N_ssd)';
@@ -52,11 +54,15 @@ f = figure('units','normalized','outerposition',[0 0 1 1]);
 subplot(1,2,1)
 p1 = plot(xs(:,1),xs(:,2));
 hold on
-draw_ssd( p1, x0(1:1:end,:), n0(1:1:end,:), 0.03 );
+draw_ssd( p1, x0(1:1:end,:), n0(1:1:end,:), 0.04 );
 axis equal tight
 grid on
 xlim( [-Rssd-2,Rssd+2] );
 ylim( [-Rssd-2,Rssd+2] );
+plot(x_a(1,:),x_a(2,:),'ok')
+title('SSD geometry and source trajectory')
+xlabel('x -> [m]')
+ylabel('y -> [m]')
 drawnow
 clear xp yp p
 % Calculate initial source position/propagation time delay for each SSD element at t = 0
@@ -66,7 +72,7 @@ Tau0  = get_initial_position( v,c, x_a, x0 );
 % Filter input signal with ideal WFS prefilters and apply amplitude and delays
 w = 2*pi*fftshift( (-Nt/2:Nt/2-1)'/(Nt)*fs );
 s_wfs = ifft( sqrt(1i*w/(c*2*pi)).*fft(in) );
-
+%%
 d_wfs = zeros(subsamp*size(Tau,1),length(x0));
 wb = waitbar(0,'Calculating driving functions');
 for n = 1 : length(x0)
@@ -93,10 +99,6 @@ elseif strcmp(AA_filter,'off')
 end
 d_wfs = real(d_wfs);
 %%
-if strcmp(output,'wav')
-    audiowrite('out.wav',d_wfs,fs);
-end
-
 subplot(1,2,2)
 plot(t,sum(d_wfs,2))
 xlim([t(1),t(end)]);
@@ -104,3 +106,24 @@ grid on
 xlabel('t -> [s]')
 ylabel('Sum( s(t))');
 title('Synthesized field at the center of SSD')
+%%
+if strcmp(output,'wav')
+    audiowrite('out.wav',d_wfs,fs);
+elseif strcmp(output,'SSR')
+    for n = 1 : size(x0,1)
+        audiowrite(sprintf('Audio/out_%03i.wav',n),d_wfs(:,n),fs);
+    end
+    
+    fileID = fopen(sprintf('WFS_%d_ls.asd',N_ssd),'w');
+    fprintf(fileID,'<?xml version="1.0" encoding="utf-8"?>\n<asdf>\n  <header>\n    <name>WFS system simulation</name>\n');
+    fprintf(fileID,'    <description></description>\n  </header>\n\n');
+    fprintf(fileID,'  <scene_setup>\n\n');
+    for n = 1 : N_ssd
+        fprintf(fileID,'<source name="ls%03i" model="point"><file>Audio/out_%03i.wav</file><position x="%f" y="%f"/><orientation azimuth="%2d"/></source>\n',...
+            n,n, x0(n,1),x0(n,2),round(atand(-n0(n,1)./n0(n,2))));
+    end   
+    fprintf(fileID,'\n  </scene_setup>\n');
+    fprintf(fileID,'</asdf>');
+    fclose(fileID);
+else
+end

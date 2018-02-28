@@ -39,7 +39,7 @@ for n = 1 : length(ts)
     Tau(n,:) = Tau_n;
     Tau_n = Tau_n - 1/fs0*Vv./Delta;
     
-    kv = sum(Dvx./R.*v0,2);
+    kv = sum(bsxfun(@times, Dvx, 1./R).*v0,2);
     wc(n,:) = pi/dx0*c./abs(kv);
     
 end

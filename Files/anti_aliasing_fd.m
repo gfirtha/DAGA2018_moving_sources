@@ -5,7 +5,7 @@ wb = waitbar(0,'Antialiasing filtering in the STFT domain');
 for n = 1 : length(x0)
     waitbar(n/length(x0),wb);
     [Dxw,f_stft,t_stft] = stft(d_wfs(:,n), wlen, hop, nfft,fs);
-    fc = interp1(ts,wc(:,n),t_stft)/(2*pi);
+    fc = interp1(ts,wc(:,n),t_stft,'linear','extrap')/(2*pi);
     [~,w_ind ]= min(abs(bsxfun(@minus, f_stft', fc)),[],1);
     AAF_mx = zeros(size(Dxw));
     for i = 1 : size(AAF_mx,2)
