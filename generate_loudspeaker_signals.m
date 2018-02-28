@@ -19,7 +19,7 @@ c = 343.1;
 %% User defined parameters
 % Virtual source properties
 v = 15;                                       % Virtual source velocity [m/s]
-[in,fs] = audioread('Samples/fire.mp3');      % Source excitation signal
+[input,fs] = audioread('Samples/fire.mp3');   % Source excitation signal
 output = 'SSR';                               % wav / SSR
 % if wav: saves output signals as a multichannel wav file
 % if SSR: saves i number of wav files and generates an asdf file for the SSR
@@ -30,26 +30,28 @@ x_a = [  -3   -3  -3  -2.5   -1.5    0  100;  %x_coordinates [m]
 
 % SSD properties
 N_ssd =   50;                                 % Number of loudspeakers
-Rssd  =   2;                                  % Radius of circular SSD
-Rref  =   0.1;                                % Radius of reference circle
+R_ssd  =   2;                                 % Radius of circular SSD
+R_ref  =   0.1;                               % Radius of reference circle
 AA_filter = 'on';                             % Antialiasing filtering enabled (on/off)
 AA_type   = 'freq_domain';                    % AA filter type: freq_domain/time_domain
 
 subsamp = 200;                                % subsampling parameter of source trajectory
 %% Create circular SSD
 fi = (0:2*pi/N_ssd:2*pi-2*pi/N_ssd)';
-x0 =  [ cos(fi)  sin(fi) ]*Rssd;
+x0 =  [ cos(fi)  sin(fi) ]*R_ssd;
 n0 = -[ cos(fi)  sin(fi) ];
 v0 =  [ sin(fi) -cos(fi) ];
 % Get actual driving function lengths
 [ p,xp,yp ] = make_path( x_a(1,:), x_a(2,:), 150 );
-Tsim = p(end)/v;
-Nt = floor(Tsim*fs/subsamp)*subsamp;
+T_sim = p(end)/v;
+Nt = floor(T_sim*fs/subsamp)*subsamp;
 t = (0:Nt-1)'/fs;
 ts = t(1:subsamp:end);
-in = sum(in(1:Nt),1)';
+input = sum(input(1:Nt),1)';
 % Get source trajectory as the function of time t
 xs = get_trajectory( p,xp,yp, ts, v );
+
+% Plot trajectory
 f = figure('units','normalized','outerposition',[0 0 1 1]);
 subplot(1,2,1)
 p1 = plot(xs(:,1),xs(:,2));
@@ -57,8 +59,8 @@ hold on
 draw_ssd( p1, x0(1:1:end,:), n0(1:1:end,:), 0.04 );
 axis equal tight
 grid on
-xlim( [-Rssd-2,Rssd+2] );
-ylim( [-Rssd-2,Rssd+2] );
+xlim( [-R_ssd-2,R_ssd+2] );
+ylim( [-R_ssd-2,R_ssd+2] );
 plot(x_a(1,:),x_a(2,:),'ok')
 title('SSD geometry and source trajectory')
 xlabel('x -> [m]')
@@ -68,16 +70,16 @@ clear xp yp p
 % Calculate initial source position/propagation time delay for each SSD element at t = 0
 Tau0  = get_initial_position( v,c, x_a, x0 );
 % Get amplitudes and delays at time instants ts
-[ A, Tau, wc ] = get_amps_and_taus( ts, x0,n0,v0, xs, Tau0,c, Rref );
+[ A, Tau, wc ] = get_amps_and_taus( ts, x0,n0,v0, xs, Tau0,c, R_ref );
 % Filter input signal with ideal WFS prefilters and apply amplitude and delays
 w = 2*pi*fftshift( (-Nt/2:Nt/2-1)'/(Nt)*fs );
-s_wfs = ifft( sqrt(1i*w/(c*2*pi)).*fft(in) );
+s_wfs = ifft( sqrt(1i*w/(c*2*pi)).*fft(input) );
 %%
 d_wfs = zeros(subsamp*size(Tau,1),length(x0));
 wb = waitbar(0,'Calculating driving functions');
 for n = 1 : length(x0)
     waitbar(n/length(x0),wb);
-    d_wfs(:,n) = interp1( t,in, t-interp1(ts,Tau(:,n),t), 'linear','extrap' ).*interp1(ts,A(:,n),t, 'linear','extrap');
+    d_wfs(:,n) = interp1( t,input, t-interp1(ts,Tau(:,n),t), 'linear','extrap' ).*interp1(ts,A(:,n),t, 'linear','extrap');
 end
 close(wb);
 clear A Tau w
@@ -110,6 +112,7 @@ title('Synthesized field at the center of SSD')
 if strcmp(output,'wav')
     audiowrite('out.wav',d_wfs,fs);
 elseif strcmp(output,'SSR')
+    mkdir Audio
     for n = 1 : size(x0,1)
         audiowrite(sprintf('Audio/out_%03i.wav',n),d_wfs(:,n),fs);
     end
