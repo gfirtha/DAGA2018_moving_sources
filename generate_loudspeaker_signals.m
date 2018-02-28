@@ -10,6 +10,7 @@
 %   d_wfs: i.-th column contains the i.-th loudspeaker's driving signal   %
 %   output = 'wav' is set: i channel out.wav is created                   %
 %   output = 'SSR' is set: i number of wave and an asdf file are generated%
+%                  which can be directly read by the Sound Scape Renderer %
 % (c) 2018 by Gergely Firtha                                              %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear
