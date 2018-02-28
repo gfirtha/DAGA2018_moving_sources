@@ -24,6 +24,9 @@ v = 15;                                       % Virtual source velocity [m/s]
 output = 'SSR';                               % wav / SSR
 % if wav: saves output signals as a multichannel wav file
 % if SSR: saves i number of wav files and generates an asdf file for the SSR
+% If SSR is set the name and location of HRTF realtive to the SSR dir
+hrtf_path = 'data/impulse_responses/hrirs/QU_KEMAR_anechoic_AKGK601_2m.wav';
+
 
 % Anchor points for source trajectory
 x_a = [  -3   -3  -3  -2.5   -1.5    0  100;  %x_coordinates [m]
@@ -129,5 +132,15 @@ elseif strcmp(output,'SSR')
     fprintf(fileID,'\n  </scene_setup>\n');
     fprintf(fileID,'</asdf>');
     fclose(fileID);
+
+    fileID2 = fopen(sprintf('WFS_%d_ls.conf',N_ssd),'w');
+    fprintf(fileID2,'SCENE_FILE_NAME = WFS_%d_ls.asd\n',N_ssd);
+    fprintf(fileID2,'NAME = WFS_%d\n', N_ssd);
+    if exist('hrtf_path','var')
+    fprintf(fileID2,'HRIR_FILE_NAME = %s\n',hrtf_path);
+    end
+    fprintf(fileID2,'NETWORK_INTERFACE = off\n');
+    fclose(fileID2);
+
 else
 end
