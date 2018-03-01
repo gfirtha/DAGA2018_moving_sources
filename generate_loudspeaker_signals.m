@@ -1,18 +1,20 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This script is a supplementary material for the paper:                  %
-% G.Firtha and P.Fiala, Theory and Implementation of 2.5D WFS of moving   %
-%    sources with arbitrary trajectory, in proceedings of DAGA2018        %
-%                                                                         %
-%  The script generates driving functions for a circular SSD from an      %
-%  arbitrary input sound file, being the excitation signal of a moving    %
-%  point source on an arbitrary trajectory                                %
-%  Outputs:                                                               %
-%   d_wfs: i.-th column contains the i.-th loudspeaker's driving signal   %
-%   output = 'wav' is set: i channel out.wav is created                   %
-%   output = 'SSR' is set: i number of wave and an asdf file are generated%
-%                  which can be directly read by the Sound Scape Renderer %
-% (c) 2018 by Gergely Firtha                                              %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                                          %
+%  This script is a supplementary material for the paper:                  %
+%  G.Firtha and P.Fiala, Theory and Implementation of 2.5D WFS of moving   %
+%    sources with arbitrary trajectory, in proceedings of DAGA2018         %
+%                                                                          %
+%  The script generates driving functions for a circular SSD from an       %
+%  arbitrary input sound file, being the excitation signal of a moving     %
+%  point source on an arbitrary trajectory                                 %
+%  Outputs:                                                                %
+%   d_wfs: i.-th column contains the i.-th loudspeaker's driving signal    %
+%   output = 'wav' is set: i channel out.wav is created                    %
+%   output = 'SSR' is set: i number of wave and an asdf file are generated %
+%                  which can be directly read by the Sound Scape Renderer  %
+% (c) 2018 by Gergely Firtha                                               %
+%                                                                          %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 clear
 close all
 addpath('Files')
@@ -25,12 +27,13 @@ output = 'SSR';                               % wav / SSR
 % if wav: saves output signals as a multichannel wav file
 % if SSR: saves i number of wav files and generates an asdf file for the SSR
 % If SSR is set the name and location of HRTF realtive to the SSR dir
+% (optional)
 hrtf_path = 'data/impulse_responses/hrirs/QU_KEMAR_anechoic_AKGK601_2m.wav';
 
 
 % Anchor points for source trajectory
 x_a = [  -3   -3  -3  -2.5   -1.5    0  100;  %x_coordinates [m]
-    -100  -1   0   1.5    2.5    3   3 ]; %y_coordinates [m]
+        -100  -1   0   1.5    2.5    3   3 ]; %y_coordinates [m]
 
 % SSD properties
 N_ssd =   50;                                 % Number of loudspeakers
@@ -73,12 +76,12 @@ drawnow
 clear xp yp p
 % Calculate initial source position/propagation time delay for each SSD element at t = 0
 Tau0  = get_initial_position( v,c, x_a, x0 );
-% Get amplitudes and delays at time instants ts
+% Get amplitudes and delays at downsampled time instants ts
 [ A, Tau, wc ] = get_amps_and_taus( ts, x0,n0,v0, xs, Tau0,c, R_ref );
 % Filter input signal with ideal WFS prefilters and apply amplitude and delays
 w = 2*pi*fftshift( (-Nt/2:Nt/2-1)'/(Nt)*fs );
 s_wfs = ifft( sqrt(1i*w/(c*2*pi)).*fft(input) );
-%%
+%% Calculate driving functions
 d_wfs = zeros(subsamp*size(Tau,1),length(x0));
 wb = waitbar(0,'Calculating driving functions');
 for n = 1 : length(x0)
@@ -87,7 +90,7 @@ for n = 1 : length(x0)
 end
 close(wb);
 clear A Tau w
-%%
+%% Perform antialiasing filtering
 if strcmp(AA_filter,'on')
     if strcmp(AA_type,'freq_domain')
         % Frequency domain antialiasing filtering
@@ -112,7 +115,7 @@ grid on
 xlabel('t -> [s]')
 ylabel('Sum( s(t))');
 title('Synthesized field at the center of SSD')
-%%
+%% Write SSR files if set
 if strcmp(output,'wav')
     audiowrite('out.wav',d_wfs,fs);
 elseif strcmp(output,'SSR')
